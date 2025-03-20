@@ -30,7 +30,7 @@ const MovieDetailpirets = () => {
   useEffect(() => {
     if (movie) {
       // Fetch video files from backend
-      fetch(`http://localhost:5000/list-files/${encodeURIComponent(movie.magnet)}`)
+      fetch(`https://movies-backend-ruddy.vercel.app/list-files/${encodeURIComponent(movie.magnet)}`)
         .then((res) => res.json())
         .then((files) => {
           const videos = files.filter((file) => file.type === 'video');
@@ -150,7 +150,7 @@ const MovieDetailpirets = () => {
         <Box sx={{ mt: 4, boxShadow: 3, borderRadius: 2, overflow: 'hidden' }}>
           <video key={selectedVideo} controls width="100%">
             <source
-              src={`http://localhost:5000/stream/${encodeURIComponent(
+              src={`https://movies-backend-ruddy.vercel.app/stream/${encodeURIComponent(
                 movie.magnet
               )}/${encodeURIComponent(selectedVideo)}`}
               type="video/mp4"

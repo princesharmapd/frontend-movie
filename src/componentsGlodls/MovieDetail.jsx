@@ -30,7 +30,7 @@ const MovieDetail = () => {
 
   useEffect(() => {
     if (movie) {
-      fetch(`http://localhost:5000/list-files/${encodeURIComponent(movie.magnet)}`)
+      fetch(`https://movies-backend-ruddy.vercel.app/list-files/${encodeURIComponent(movie.magnet)}`)
         .then((res) => res.json())
         .then((files) => {
           const videos = files.filter((file) => file.type === 'video');
@@ -112,7 +112,7 @@ const MovieDetail = () => {
                 <Box sx={{ mt: 4 }}>
                   <video key={selectedVideo.name} controls width="100%">
                     <source
-                      src={`http://localhost:5000/stream/${encodeURIComponent(movie.magnet)}/${encodeURIComponent(selectedVideo.name)}`}
+                      src={`https://movies-backend-ruddy.vercel.app/stream/${encodeURIComponent(movie.magnet)}/${encodeURIComponent(selectedVideo.name)}`}
                       type="video/mp4"
                     />
                   </video>
@@ -127,10 +127,10 @@ const MovieDetail = () => {
       <Grid container spacing={2} sx={{ mt: 4 }}>
         {imageFiles.map((img, index) => (
           <Grid item xs={6} sm={4} md={3} key={index}>
-            <Card onClick={() => handleOpen(`http://localhost:5000/stream/${encodeURIComponent(movie.magnet)}/${encodeURIComponent(img.name)}`)} sx={{ cursor: 'pointer' }}>
+            <Card onClick={() => handleOpen(`https://movies-backend-ruddy.vercel.app/stream/${encodeURIComponent(movie.magnet)}/${encodeURIComponent(img.name)}`)} sx={{ cursor: 'pointer' }}>
               <CardMedia
                 component="img"
-                image={`http://localhost:5000/stream/${encodeURIComponent(movie.magnet)}/${encodeURIComponent(img.name)}`}
+                image={`https://movies-backend-ruddy.vercel.app/stream/${encodeURIComponent(movie.magnet)}/${encodeURIComponent(img.name)}`}
                 alt={`Screenshot ${index + 1}`}
               />
             </Card>

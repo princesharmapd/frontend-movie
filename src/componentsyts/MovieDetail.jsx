@@ -41,7 +41,7 @@ const MovieDetail = () => {
   const fetchFiles = async (magnet) => {
     try {
       const encodedMagnet = encodeURIComponent(magnet);
-      const response = await axios.get(`http://localhost:5000/list-files/${encodedMagnet}`);
+      const response = await axios.get(`https://movies-backend-ruddy.vercel.app/list-files/${encodedMagnet}`);
       const videos = response.data.filter((file) => file.type === 'video');
       setFileList(videos);
       if (videos.length) setSelectedFile(videos[0].name);
@@ -184,7 +184,7 @@ const MovieDetail = () => {
         <Box sx={{ mt: 4, boxShadow: 3, borderRadius: 2, overflow: 'hidden' }}>
           <video key={selectedFile} controls width="100%">
             <source
-              src={`http://localhost:5000/stream/${encodeURIComponent(selectedTorrent.magnet)}/${encodeURIComponent(selectedFile)}`}
+              src={`https://movies-backend-ruddy.vercel.app/stream/${encodeURIComponent(selectedTorrent.magnet)}/${encodeURIComponent(selectedFile)}`}
               type="video/mp4"
             />
             Your browser does not support the video tag.
