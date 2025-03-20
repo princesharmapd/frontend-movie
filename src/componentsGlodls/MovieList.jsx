@@ -5,15 +5,13 @@ import axios from 'axios';
 import { MoviesContext } from '../context/MoviesContext';
 import './MovieList.css';
 
-const defaultPoster = 'data:image/jpeg;base64,/9j/...'; // Default image if poster not available
-
 const MovieList = () => {
   const { movies, setMovies } = useContext(MoviesContext);
   const currentYear = new Date().getFullYear();
   const storedQuery = sessionStorage.getItem('searchQuery');
 
-  const [query, setQuery] = useState(storedQuery || '');
-  const [searchTerm, setSearchTerm] = useState(storedQuery || String(currentYear));
+  const [query, setQuery] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -119,14 +117,9 @@ const MovieList = () => {
         {movies.map((movie, index) => (
           <div key={index} className="movie-card">
             <Link to={`/movie/${index}`} className="movie-link">
-              <img
-                src={movie.poster || defaultPoster} // Use default poster if none available
-                alt={movie.name}
-                className="movie-poster"
-              />
-              <div className="movie-details">
+              <div className="movie-title-card">
                 <h3 className="movie-title">{movie.name}</h3>
-                <h3 className="movie-title">Seeders: {movie.seeders}</h3>
+                <h4 className="movie-seeders">Seeders: {movie.seeders}</h4>
               </div>
             </Link>
           </div>
