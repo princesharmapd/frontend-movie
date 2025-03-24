@@ -12,7 +12,6 @@ import {
   Select,
 } from "@mui/material";
 
-
 const MovieDetail = () => {
   const { state } = useLocation();
   const movie = state?.movie;
@@ -41,15 +40,34 @@ const MovieDetail = () => {
     return null;
   };
 
+  const findTorrentUrl = (movieData) => {
+    if (!movieData) return null;
+    if (movieData.torrent) return movieData.torrent;
+    if (movieData.torrents && Array.isArray(movieData.torrents)) {
+      for (const torrent of movieData.torrents) {
+        if (torrent.url && torrent.url.endsWith('.torrent')) return torrent.url;
+        if (torrent.torrent) return torrent.torrent;
+      }
+    }
+    return null;
+  };
+
   const fetchVideoFiles = async () => {
+    // First try to find magnet link
     const magnetLink = findMagnetLink(movie);
-    if (!magnetLink) {
-      console.warn("No magnet link found for this movie.");
+    // If no magnet link, look for torrent URL
+    const torrentUrl = findTorrentUrl(movie);
+    
+    if (!magnetLink && !torrentUrl) {
+      console.warn("No magnet link or torrent URL found for this movie.");
       return;
     }
+    
     try {
+      // Use magnet link if available, otherwise use torrent URL
+      const torrentIdentifier = magnetLink || torrentUrl;
       const response = await fetch(
-        `https://webtorrent-stream.onrender.com/list-files/${encodeURIComponent(magnetLink)}`
+        `https://webtorrent-stream.onrender.com/list-files/${encodeURIComponent(torrentIdentifier)}`
       );
       const data = await response.json();
       if (data.error) {
@@ -72,13 +90,21 @@ const MovieDetail = () => {
       alert("Please select a video file to stream.");
       return;
     }
+    
+    // First try to find magnet link
     const magnetLink = findMagnetLink(movie);
-    if (!magnetLink) {
-      alert("No valid magnet link found.");
+    // If no magnet link, look for torrent URL
+    const torrentUrl = findTorrentUrl(movie);
+    
+    if (!magnetLink && !torrentUrl) {
+      alert("No valid magnet link or torrent URL found.");
       return;
     }
+    
+    // Use magnet link if available, otherwise use torrent URL
+    const torrentIdentifier = magnetLink || torrentUrl;
     setVideoSrc(
-      `https://webtorrent-stream.onrender.com/stream/${encodeURIComponent(magnetLink)}/${encodeURIComponent(selectedFile)}`
+      `https://webtorrent-stream.onrender.com/stream/${encodeURIComponent(torrentIdentifier)}/${encodeURIComponent(selectedFile)}`
     );
     setLoading(true);
   };
@@ -122,7 +148,6 @@ const MovieDetail = () => {
               />
             )}
           </Card>
-
         </Grid>
         <Grid item xs={12} md={8}>
           <Typography variant="h4">{movie.name}</Typography>
@@ -130,7 +155,6 @@ const MovieDetail = () => {
           <Typography variant="body1" sx={{ marginTop: 2 }}>
             {movie.description || "No description available."}
           </Typography>
-
 
           {movie.screenshot && movie.screenshot.length > 0 && (
             <Grid container spacing={1} sx={{ marginTop: 2 }}>
@@ -145,6 +169,7 @@ const MovieDetail = () => {
               ))}
             </Grid>
           )}
+          
           {videoFiles.length > 0 && (
             <div style={{ marginTop: 10 }}>
               <Typography variant="body2"><strong>Select Video File:</strong></Typography>
@@ -174,13 +199,22 @@ const MovieDetail = () => {
         </Grid>
       </Grid>
 
-
-
       {videoSrc && (
         <div style={{ marginTop: 20, textAlign: "center" }}>
           <Typography variant="h5">Now Playing</Typography>
           {loading && <CircularProgress sx={{ margin: 2 }} />}
-          <video ref={videoRef} controls width="100%" src={videoSrc} />
+          <video 
+            ref={videoRef} 
+            controls 
+            width="100%" 
+            src={videoSrc}
+            style={{ maxHeight: '70vh' }}
+            onError={(e) => {
+              console.error("Video error:", e);
+              alert("Error loading video. Please try again.");
+              setLoading(false);
+            }}
+          />
         </div>
       )}
     </Container>
