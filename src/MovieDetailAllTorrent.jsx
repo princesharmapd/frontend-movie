@@ -49,7 +49,7 @@ const MovieDetail = () => {
     }
     try {
       const response = await fetch(
-        `https://movies-backend-ruddy.vercel.app/list-files/${encodeURIComponent(magnetLink)}`
+        `https://movies-backend-uok9.onrender.com/list-files/${encodeURIComponent(magnetLink)}`
       );
       const data = await response.json();
       if (data.error) {
@@ -78,7 +78,7 @@ const MovieDetail = () => {
       return;
     }
     setVideoSrc(
-      `https://movies-backend-ruddy.vercel.app/stream/${encodeURIComponent(magnetLink)}/${encodeURIComponent(selectedFile)}`
+      `https://movies-backend-uok9.onrender.com/stream/${encodeURIComponent(magnetLink)}/${encodeURIComponent(selectedFile)}`
     );
     setLoading(true);
   };

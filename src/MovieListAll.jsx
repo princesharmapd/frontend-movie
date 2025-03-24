@@ -13,7 +13,7 @@ const MovieListAll = () => {
     if (!query.trim()) return; // Prevent empty search calls
 
     setLoading(true);
-    fetch(`https://movies-backend-ruddy.vercel.app/movies/search?query=${query}&page=${currentPage}`)
+    fetch(`https://movies-backend-uok9.onrender.com/movies/search?query=${query}&page=${currentPage}`)
       .then((res) => res.json())
       .then((data) => {
         if (!Array.isArray(data)) {

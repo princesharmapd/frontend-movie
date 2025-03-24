@@ -28,7 +28,7 @@ const MovieListAllTorrent = () => {
     try {
       const queryParam = searchQuery ? `query=${encodeURIComponent(searchQuery)}` : "";
       const response = await fetch(
-        `https://movies-backend-ruddy.vercel.app/movies/all?${queryParam}&page=${currentPage}`
+        `https://movies-backend-uok9.onrender.com/movies/all?${queryParam}&page=${currentPage}`
       );
   
       if (!response.ok) {

@@ -13,7 +13,7 @@ const MovieListRecent = () => {
   const scrollLeft = useRef(0);
 
   useEffect(() => {
-    fetch("https://movies-backend-ruddy.vercel.app/movies/recent") // Updated endpoint
+    fetch("https://movies-backend-uok9.onrender.com/movies/recent") // Updated endpoint
       .then((res) => res.json())
       .then((data) => {
         const filteredMovies = data.filter(movie => movie.name && movie.poster && movie.rating);

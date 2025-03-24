@@ -17,7 +17,7 @@ const InfiniteScrollMovies = () => {
     if (loading) return;
     setLoading(true);
     
-    fetch(`https://movies-backend-ruddy.vercel.app/movies/search?query=${currentYear}&page=${currentPage}`)
+    fetch(`https://movies-backend-uok9.onrender.com/movies/search?query=${currentYear}&page=${currentPage}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.error) {
