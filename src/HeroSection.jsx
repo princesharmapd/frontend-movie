@@ -13,7 +13,7 @@ const HeroSection = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("https://movies-backend-kql9bihp3-prince-sharmas-projects-0b2d6a4a.vercel.app/movies/trending")
+    fetch("https://movies-backend-ruddy.vercel.app/movies/trending")
       .then((res) => res.json())
       .then((data) => {
         const filteredMovies = data.filter(movie => movie.name && movie.poster && movie.rating);

@@ -14,7 +14,7 @@ const MovieDetail = () => {
 
   const fetchFiles = async (magnet) => {
     try {
-      const response = await axios.get(`https://movies-backend-kql9bihp3-prince-sharmas-projects-0b2d6a4a.vercel.app/list-files/${encodeURIComponent(magnet)}`);
+      const response = await axios.get(`https://movies-backend-ruddy.vercel.app/list-files/${encodeURIComponent(magnet)}`);
       setFileList(response.data);
     } catch (error) {
       console.error("Error fetching file list:", error);
@@ -22,7 +22,7 @@ const MovieDetail = () => {
   };
 
   const startStream = (magnet, filename) => {
-    setVideoSrc(`https://movies-backend-kql9bihp3-prince-sharmas-projects-0b2d6a4a.vercel.app/stream/${encodeURIComponent(magnet)}/${encodeURIComponent(filename)}`);
+    setVideoSrc(`https://movies-backend-ruddy.vercel.app/stream/${encodeURIComponent(magnet)}/${encodeURIComponent(filename)}`);
     setLoading(true);
   };
 
