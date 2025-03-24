@@ -14,7 +14,7 @@ const MovieDetail = () => {
 
   const fetchFiles = async (magnet) => {
     try {
-      const response = await axios.get(`https://movies-backend-uok9.onrender.com/list-files/${encodeURIComponent(magnet)}`);
+      const response = await axios.get(`https://webtorrent-stream.onrender.com/list-files/${encodeURIComponent(magnet)}`);
       setFileList(response.data);
     } catch (error) {
       console.error("Error fetching file list:", error);
@@ -22,7 +22,7 @@ const MovieDetail = () => {
   };
 
   const startStream = (magnet, filename) => {
-    setVideoSrc(`https://movies-backend-uok9.onrender.com/stream/${encodeURIComponent(magnet)}/${encodeURIComponent(filename)}`);
+    setVideoSrc(`https://webtorrent-stream.onrender.com/stream/${encodeURIComponent(magnet)}/${encodeURIComponent(filename)}`);
     setLoading(true);
   };
 
