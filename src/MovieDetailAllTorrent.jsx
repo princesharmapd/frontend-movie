@@ -1,221 +1,270 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import {
-  Container,
-  Typography,
-  Button,
-  Grid,
-  Card,
-  CardMedia,
-  CircularProgress,
-  MenuItem,
-  Select,
+import { 
+  Container, 
+  Typography, 
+  Button, 
+  Grid, 
+  Card, 
+  CardMedia, 
+  CircularProgress, 
+  List, 
+  ListItem, 
+  ListItemText,
+  Alert,
+  Snackbar,
+  Box
 } from "@mui/material";
+import axios from "axios";
+
+const API_BASE_URL = "https://webtorrent-stream.onrender.com";
 
 const MovieDetail = () => {
   const { state } = useLocation();
   const movie = state?.movie;
-  const [videoFiles, setVideoFiles] = useState([]);
-  const [selectedFile, setSelectedFile] = useState("");
+  const [fileList, setFileList] = useState([]);
   const [videoSrc, setVideoSrc] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const videoRef = useRef(null);
 
-  console.log("Movie Data:", movie);
-
-  const findMagnetLink = (movieData) => {
-    if (!movieData) return null;
-    if (movieData.magnet) return movieData.magnet;
-    if (movieData.torrents && Array.isArray(movieData.torrents)) {
-      for (const torrent of movieData.torrents) {
-        if (torrent.magnet) return torrent.magnet;
-      }
-    }
-    for (const key in movieData) {
-      if (typeof movieData[key] === "object") {
-        const magnet = findMagnetLink(movieData[key]);
-        if (magnet) return magnet;
-      }
-    }
-    return null;
-  };
-
-  const findTorrentUrl = (movieData) => {
-    if (!movieData) return null;
-    if (movieData.torrent) return movieData.torrent;
-    if (movieData.torrents && Array.isArray(movieData.torrents)) {
-      for (const torrent of movieData.torrents) {
-        if (torrent.url && torrent.url.endsWith('.torrent')) return torrent.url;
-        if (torrent.torrent) return torrent.torrent;
-      }
-    }
-    return null;
-  };
-
-  const fetchVideoFiles = async () => {
-    // First try to find magnet link
-    const magnetLink = findMagnetLink(movie);
-    // If no magnet link, look for torrent URL
-    const torrentUrl = findTorrentUrl(movie);
+  const findTorrentIdentifier = () => {
+    if (!movie) return null;
     
-    if (!magnetLink && !torrentUrl) {
-      console.warn("No magnet link or torrent URL found for this movie.");
+    if (movie.magnet) return movie.magnet;
+    if (movie.torrent) return movie.torrent;
+    
+    if (movie.torrents?.length) {
+      const withMagnet = movie.torrents.find(t => t.magnet);
+      if (withMagnet) return withMagnet.magnet;
+      
+      const withTorrent = movie.torrents.find(t => t.torrent);
+      if (withTorrent) return withTorrent.torrent;
+    }
+    
+    return null;
+  };
+
+  const fetchFiles = async () => {
+    setError(null);
+    const torrentIdentifier = findTorrentIdentifier();
+    
+    if (!torrentIdentifier) {
+      setError("No valid torrent source found");
       return;
     }
-    
+
     try {
-      // Use magnet link if available, otherwise use torrent URL
-      const torrentIdentifier = magnetLink || torrentUrl;
-      const response = await fetch(
-        `https://webtorrent-stream.onrender.com/list-files/${encodeURIComponent(torrentIdentifier)}`
+      setLoading(true);
+      const response = await axios.get(
+        `${API_BASE_URL}/list-files/${encodeURIComponent(torrentIdentifier)}`,
+        { timeout: 10000 }
       );
-      const data = await response.json();
-      if (data.error) {
-        alert(data.error);
-        return;
+      setFileList(response.data);
+    } catch (err) {
+      console.error("Fetch files error:", err);
+      setError(err.response?.data?.error || err.message || "Failed to load files");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startStream = async (filename) => {
+    setError(null);
+    const torrentIdentifier = findTorrentIdentifier();
+    
+    if (!torrentIdentifier) {
+      setError("No valid torrent source found");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Check if backend is reachable
+      try {
+        await axios.get(`${API_BASE_URL}/health-check`, { timeout: 5000 });
+      } catch (err) {
+        throw new Error("Cannot connect to the streaming server");
       }
-      setVideoFiles(data);
-      if (data.length > 0) setSelectedFile(data[0].name);
-    } catch (error) {
-      console.error("Error fetching video files:", error);
+
+      // Check file format support
+      const ext = filename.split('.').pop().toLowerCase();
+      const supportedFormats = ['mp4', 'webm', 'ogg', 'mov', 'mkv'];
+      if (!supportedFormats.includes(ext)) {
+        throw new Error(`Unsupported video format: .${ext}. Try MP4 files for best compatibility.`);
+      }
+
+      const streamUrl = `${API_BASE_URL}/stream/${
+        encodeURIComponent(torrentIdentifier)
+      }/${
+        encodeURIComponent(filename)
+      }`;
+      
+      // Reset and start stream
+      setVideoSrc(null);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      setVideoSrc(streamUrl);
+
+    } catch (err) {
+      console.error("Stream setup error:", err);
+      setError(err.message || "Failed to setup video stream");
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchVideoFiles();
-  }, [movie]);
-
-  const startStream = () => {
-    if (!selectedFile) {
-      alert("Please select a video file to stream.");
-      return;
-    }
-    
-    // First try to find magnet link
-    const magnetLink = findMagnetLink(movie);
-    // If no magnet link, look for torrent URL
-    const torrentUrl = findTorrentUrl(movie);
-    
-    if (!magnetLink && !torrentUrl) {
-      alert("No valid magnet link or torrent URL found.");
-      return;
-    }
-    
-    // Use magnet link if available, otherwise use torrent URL
-    const torrentIdentifier = magnetLink || torrentUrl;
-    setVideoSrc(
-      `https://webtorrent-stream.onrender.com/stream/${encodeURIComponent(torrentIdentifier)}/${encodeURIComponent(selectedFile)}`
-    );
-    setLoading(true);
-  };
-
-  useEffect(() => {
-    if (!videoRef.current) return;
     const video = videoRef.current;
-    video.addEventListener("playing", () => setLoading(false));
-    return () => video.removeEventListener("playing", () => setLoading(false));
+    if (!video) return;
+
+    const handleError = () => {
+      let errorMessage = "Video playback failed";
+      switch(video.error?.code) {
+        case 1: errorMessage = "Video loading aborted"; break;
+        case 2: errorMessage = "Network error"; break;
+        case 3: errorMessage = "Video decoding failed - may be corrupt or unsupported format"; break;
+        case 4: errorMessage = "Video format not supported by your browser"; break;
+      }
+      setError(errorMessage);
+      setLoading(false);
+    };
+
+    const handleWaiting = () => setLoading(true);
+    const handleCanPlay = () => setLoading(false);
+
+    video.addEventListener('error', handleError);
+    video.addEventListener('waiting', handleWaiting);
+    video.addEventListener('canplay', handleCanPlay);
+
+    return () => {
+      video.removeEventListener('error', handleError);
+      video.removeEventListener('waiting', handleWaiting);
+      video.removeEventListener('canplay', handleCanPlay);
+    };
   }, [videoSrc]);
 
   if (!movie) return <Typography variant="h4">Movie not found</Typography>;
 
-  const hasValidPoster =
-    movie.poster && movie.poster !== "https://l.t0r.site/no-cover.png";
-
   return (
-    <Container sx={{ marginTop: 7 }}>
+    <Container sx={{ marginTop: 4 }}>
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={() => setError(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
+
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
           <Card>
-            {hasValidPoster ? (
-              <CardMedia component="img" image={movie.poster} alt={movie.name} />
-            ) : movie.screenshot && movie.screenshot.length > 0 ? (
-              <Grid container spacing={1} sx={{ padding: 1 }}>
-                {movie.screenshot.slice(0, 4).map((screenshot, index) => (
-                  <Grid item xs={6} key={index}>
-                    <img
-                      src={screenshot}
-                      alt={`Screenshot ${index + 1}`}
-                      style={{ width: "100%", borderRadius: "5px" }}
-                    />
-                  </Grid>
-                ))}
-              </Grid>
-            ) : (
-              <CardMedia
-                component="img"
-                image="https://via.placeholder.com/300"
-                alt="No Cover Available"
+            {movie.poster && !movie.poster.includes('no-cover') ? (
+              <CardMedia 
+                component="img" 
+                image={movie.poster} 
+                alt={movie.name}
+                sx={{ maxHeight: 500 }}
               />
+            ) : (
+              <Box sx={{ 
+                height: 500,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: '#f5f5f5'
+              }}>
+                <Typography>No poster available</Typography>
+              </Box>
             )}
           </Card>
         </Grid>
+
         <Grid item xs={12} md={8}>
-          <Typography variant="h4">{movie.name}</Typography>
-          <Typography variant="h6" color="textSecondary">{movie.date}</Typography>
-          <Typography variant="body1" sx={{ marginTop: 2 }}>
+          <Typography variant="h4" gutterBottom>{movie.name}</Typography>
+          <Typography variant="subtitle1" color="textSecondary" gutterBottom>
+            {movie.year || movie.date} | {movie.runtime || 'Unknown duration'}
+          </Typography>
+          
+          <Typography variant="body1" paragraph>
             {movie.description || "No description available."}
           </Typography>
-
-          {movie.screenshot && movie.screenshot.length > 0 && (
-            <Grid container spacing={1} sx={{ marginTop: 2 }}>
-              {movie.screenshot.slice(0, 4).map((screenshot, index) => (
-                <Grid item xs={6} sm={3} key={index}>
-                  <img
-                    src={screenshot}
-                    alt={`Screenshot ${index + 1}`}
-                    style={{ width: "100%", borderRadius: "5px" }}
-                  />
-                </Grid>
-              ))}
-            </Grid>
-          )}
-          
-          {videoFiles.length > 0 && (
-            <div style={{ marginTop: 10 }}>
-              <Typography variant="body2"><strong>Select Video File:</strong></Typography>
-              <Select
-                value={selectedFile}
-                onChange={(e) => setSelectedFile(e.target.value)}
-                sx={{ width: "100%", marginTop: 1 }}
-              >
-                {videoFiles.map((file) => (
-                  <MenuItem key={file.name} value={file.name}>
-                    {file.name} ({(file.length / (1024 * 1024)).toFixed(2)} MB)
-                  </MenuItem>
-                ))}
-              </Select>
-            </div>
-          )}
 
           <Button
             variant="contained"
             color="primary"
+            onClick={fetchFiles}
+            disabled={loading}
             sx={{ mt: 2 }}
-            onClick={startStream}
-            disabled={!videoFiles.length}
           >
-            {videoFiles.length ? "Stream Movie" : "No Video Files Found"}
+            {loading ? <CircularProgress size={24} /> : "Load Available Files"}
           </Button>
         </Grid>
       </Grid>
 
+      {fileList.length > 0 && (
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h5" gutterBottom>Available Files</Typography>
+          <List dense sx={{ maxHeight: 300, overflow: 'auto' }}>
+            {fileList.map((file, index) => (
+              <ListItem key={index} divider>
+                <ListItemText 
+                  primary={file.name} 
+                  secondary={`${(file.length / (1024 * 1024)).toFixed(2)} MB • ${file.type.toUpperCase()}`} 
+                />
+                {file.type === "video" && (
+                  <Button
+                    variant="outlined"
+                    onClick={() => startStream(file.name)}
+                    disabled={loading}
+                  >
+                    Play
+                  </Button>
+                )}
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+      )}
+
       {videoSrc && (
-        <div style={{ marginTop: 20, textAlign: "center" }}>
-          <Typography variant="h5">Now Playing</Typography>
-          {loading && <CircularProgress sx={{ margin: 2 }} />}
-          <video 
-            ref={videoRef} 
-            controls 
-            width="100%" 
-            src={videoSrc}
-            style={{ maxHeight: '70vh' }}
-            onError={(e) => {
-              console.error("Video error:", e);
-              alert("Error loading video. Please try again.");
-              setLoading(false);
-            }}
-          />
-        </div>
+        <Box sx={{ mt: 4, position: 'relative' }}>
+          <Typography variant="h5" gutterBottom>Now Playing</Typography>
+          <Box sx={{
+            position: 'relative',
+            backgroundColor: '#000',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            minHeight: 300
+          }}>
+            {loading && (
+              <CircularProgress 
+                size={50} 
+                sx={{ 
+                  color: '#fff', 
+                  position: 'absolute',
+                  zIndex: 1
+                }} 
+              />
+            )}
+            <video
+              ref={videoRef}
+              controls
+              style={{
+                width: '100%',
+                maxHeight: '70vh',
+                opacity: loading ? 0.5 : 1
+              }}
+              crossOrigin="anonymous"
+            >
+              <source src={videoSrc} type={`video/${videoSrc.split('.').pop().toLowerCase()}`} />
+              Your browser does not support HTML5 video.
+            </video>
+          </Box>
+        </Box>
       )}
     </Container>
   );
