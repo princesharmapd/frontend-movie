@@ -80,8 +80,8 @@ const InfiniteScrollMovies = () => {
   }, []);
 
   return (
-    <Container sx={{ mt: 4 }}>
-      <Typography variant="h5" sx={{ mb: 2, fontWeight: "bold" }}>
+    <>
+    <Typography variant="h5" sx={{ mb: 2, fontWeight: "bold" }}>
         Latest Movies
       </Typography>
       <Box sx={{
@@ -123,7 +123,9 @@ const InfiniteScrollMovies = () => {
         </Box>
       )}
       {hasMore && <div ref={lastMovieElementRef} style={{ height: "20px", width: "100%" }} />}
-    </Container>
+   
+    </>
+      
   );
 };
 
