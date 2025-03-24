@@ -28,7 +28,7 @@ const MovieListAllTorrent = () => {
     try {
       const queryParam = searchQuery ? `query=${encodeURIComponent(searchQuery)}` : "";
       const response = await fetch(
-        `https://movies-backend-ruddy.vercel.app/movies/all?${queryParam}&page=${currentPage}`
+        `https://movies-backend-kql9bihp3-prince-sharmas-projects-0b2d6a4a.vercel.app/movies/all?${queryParam}&page=${currentPage}`
       );
   
       if (!response.ok) {
