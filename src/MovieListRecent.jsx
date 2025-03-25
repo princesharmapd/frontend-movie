@@ -13,15 +13,18 @@ const MovieListRecent = () => {
   const scrollLeft = useRef(0);
 
   useEffect(() => {
-    fetch("https://movies-backend-uok9.onrender.com/movies/recent") // Updated endpoint
+    fetch("https://torrent-fast-api.onrender.com/api/v1/recent?site=yts&limit=0&page=1")
       .then((res) => res.json())
       .then((data) => {
-        const filteredMovies = data.filter(movie => movie.name && movie.poster && movie.rating);
-        setMovies(filteredMovies);
+        if (data && Array.isArray(data.data)) {
+          const filteredMovies = data.data.filter(movie => movie.name && movie.poster && movie.rating);
+          setMovies(filteredMovies);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
+  
 
   const handleMouseDown = (e) => {
     isDragging.current = true;
