@@ -15,15 +15,26 @@ const MovieListTrending = () => {
   const scrollLeft = useRef(0);
 
   useEffect(() => {
-    fetch("https://movies-backend-uok9.onrender.com/movies/trending") // Updated endpoint
+    fetch("https://torrent-fast-api.onrender.com/api/v1/trending?site=yts&limit=0&page=1")
       .then((res) => res.json())
-      .then((data) => {
-        const filteredMovies = data.filter(movie => movie.name && movie.poster && movie.rating);
-        setMovies(filteredMovies);
+      .then((response) => {
+        console.log("API Response:", response); // Log API data
+        const moviesData = response.data || []; 
+        const filteredMovies = moviesData.filter(
+          (movie) => movie.name && movie.poster && movie.rating
+        );
+  
+        // Remove duplicates based on movie name or ID
+        const uniqueMovies = Array.from(new Map(filteredMovies.map(movie => [movie.name, movie])).values());
+  
+        setMovies(uniqueMovies);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
+  
+
+  
 
   const handleMouseDown = (e) => {
     isDragging.current = true;
