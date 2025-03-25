@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardMedia, CardContent, Typography, Box, Container, CircularProgress, Skeleton } from "@mui/material";
+import { Card, CardMedia, CardContent, Typography, Box, CircularProgress, Skeleton } from "@mui/material";
 import MovieListRecent from "./MovieListRecent";
 import InfiniteScrollMovies from "./InfiniteScrollMovies";
 import HeroSection from "./HeroSection";
@@ -18,23 +18,18 @@ const MovieListTrending = () => {
     fetch("https://torrent-fast-api.onrender.com/api/v1/trending?site=yts&limit=0&page=1")
       .then((res) => res.json())
       .then((response) => {
-        console.log("API Response:", response); // Log API data
-        const moviesData = response.data || []; 
-        const filteredMovies = moviesData.filter(
-          (movie) => movie.name && movie.poster && movie.rating
-        );
-  
-        // Remove duplicates based on movie name or ID
-        const uniqueMovies = Array.from(new Map(filteredMovies.map(movie => [movie.name, movie])).values());
-  
+        console.log("API Response:", response);
+        const moviesData = response.data || [];
+        const filteredMovies = moviesData.filter((movie) => movie.name && movie.poster && movie.rating);
+
+        // Remove duplicates based on movie name
+        const uniqueMovies = Array.from(new Map(filteredMovies.map((movie) => [movie.name, movie])).values());
+
         setMovies(uniqueMovies);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
-  
-
-  
 
   const handleMouseDown = (e) => {
     isDragging.current = true;
@@ -69,8 +64,8 @@ const MovieListTrending = () => {
 
   return (
     <>
-    <HeroSection />
-      <Container sx={{ mt: 3 }}>
+      <HeroSection />
+      <Box sx={{ mt: 3, ml: 2 }}>
         <Typography variant="h5" sx={{ mb: 2, fontWeight: "bold" }}>
           🔥 Trending Movies
         </Typography>
@@ -81,9 +76,12 @@ const MovieListTrending = () => {
             display: "flex",
             gap: 2,
             cursor: "grab",
-            overflow: "hidden",
+            overflowX: "auto",
+            overflowY: "hidden",
             userSelect: "none",
-            paddingBottom: "10px",
+            pb: "10px",
+            scrollbarWidth: "none", // Hide scrollbar for Firefox
+            "&::-webkit-scrollbar": { display: "none" }, // Hide scrollbar for Webkit
           }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -92,8 +90,29 @@ const MovieListTrending = () => {
         >
           {loading
             ? [...Array(7)].map((_, index) => (
-                <Card key={index} sx={{ width: "160px", height: "250px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", boxShadow: 3 }}>
-                  <Box sx={{ position: "relative", width: "100%", height: "180px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Card
+                  key={index}
+                  sx={{
+                    width: { xs: "45%", sm: "160px" },
+                    height: "250px",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    boxShadow: 3,
+                    flex: "0 0 auto",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      position: "relative",
+                      width: "100%",
+                      height: "180px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
                     <Skeleton variant="rectangular" width="100%" height="100%" />
                     <CircularProgress sx={{ position: "absolute" }} />
                   </Box>
@@ -106,7 +125,14 @@ const MovieListTrending = () => {
             : movies.map((movie, index) => (
                 <Card
                   key={index}
-                  sx={{ cursor: "pointer", width: "160px", boxShadow: 3, flex: "0 0 auto", transition: "transform 0.2s", "&:hover": { transform: "scale(1.05)" } }}
+                  sx={{
+                    cursor: "pointer",
+                    width: { xs: "45%", sm: "160px" },
+                    boxShadow: 3,
+                    flex: "0 0 auto",
+                    transition: "transform 0.2s",
+                    "&:hover": { transform: "scale(1.05)" },
+                  }}
                   onClick={() => navigate(`/movie/${index}`, { state: { movie } })}
                 >
                   <CardMedia component="img" height="180" image={movie.poster} alt={movie.name} sx={{ objectFit: "cover" }} />
@@ -121,7 +147,7 @@ const MovieListTrending = () => {
                 </Card>
               ))}
         </Box>
-      </Container>
+      </Box>
       <MovieListRecent />
       <InfiniteScrollMovies />
     </>

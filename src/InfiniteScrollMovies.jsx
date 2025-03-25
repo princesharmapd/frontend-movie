@@ -82,6 +82,7 @@ const InfiniteScrollMovies = () => {
 
   return (
     <>
+    <Box sx={{ mt: 3, ml: 2 }}>
     <Typography variant="h5" sx={{ mb: 2, fontWeight: "bold" }}>
         Latest Movies
       </Typography>
@@ -124,7 +125,7 @@ const InfiniteScrollMovies = () => {
         </Box>
       )}
       {hasMore && <div ref={lastMovieElementRef} style={{ height: "20px", width: "100%" }} />}
-   
+      </Box>
     </>
       
   );
