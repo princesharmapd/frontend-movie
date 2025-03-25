@@ -28,29 +28,22 @@ const MovieListAllTorrent = () => {
     try {
       const queryParam = searchQuery ? `query=${encodeURIComponent(searchQuery)}` : "";
       const response = await fetch(
-        `https://movies-backend-uok9.onrender.com/movies/all?${queryParam}&page=${currentPage}`
+        `https://torrent-fast-api.onrender.com/api/v1/all/search?query=${queryParam}&limit=0&page=${currentPage}`
       );
-  
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-  
-      const data = await response.json();
-  
-      if (!Array.isArray(data)) {
+      const responseData = await response.json(); 
+      
+      if (!responseData.data || !Array.isArray(responseData.data)) {
         throw new Error("Invalid data format received");
       }
-  
-      // Filter out movies that contain "https://libgen.is" in the URL
-      const filteredMovies = data.filter(movie => !movie.url.includes("https://libgen.is"));
-  
+      
+      const filteredMovies = responseData.data.filter(movie => !movie.url.includes("https://libgen.is"));
+      
       const allMovies = filteredMovies.map(movie => ({
         ...movie,
         poster: movie.poster && movie.poster.includes("no-cover")
           ? "/fallback-poster.jpg"
           : movie.poster || "/fallback-poster.jpg"
       }));
-  
       setMovies(prevMovies => (currentPage === 1 ? allMovies : [...prevMovies, ...allMovies]));
     } catch (error) {
       console.error("Error fetching movies:", error);
