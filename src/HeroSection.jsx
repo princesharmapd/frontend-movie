@@ -13,10 +13,13 @@ const HeroSection = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("https://movies-backend-uok9.onrender.com/movies/trending")
+    fetch("https://torrent-fast-api.onrender.com/api/v1/trending?site=yts&limit=0&page=1")
       .then((res) => res.json())
-      .then((data) => {
-        const filteredMovies = data.filter(movie => movie.name && movie.poster && movie.rating);
+      .then((response) => {
+        const moviesData = response.data || []; // Extract movies array safely
+        const filteredMovies = moviesData.filter(
+          (movie) => movie.name && movie.poster && movie.rating
+        );
         setMovies(filteredMovies);
         if (filteredMovies.length > 0) {
           setActiveMovie(filteredMovies[0]);
@@ -25,6 +28,7 @@ const HeroSection = () => {
       })
       .catch(() => setLoading(false));
   }, []);
+  
 
   const settings = {
     dots: true,
