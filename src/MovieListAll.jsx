@@ -11,18 +11,19 @@ const MovieListAll = () => {
 
   const fetchMovies = (currentPage) => {
     if (!query.trim()) return; // Prevent empty search calls
-
+  
     setLoading(true);
-    fetch(`https://movies-backend-uok9.onrender.com/movies/search?query=${query}&page=${currentPage}`)
+    
+    fetch(`https://torrent-fast-api.onrender.com/api/v1/search?site=yts&query=${query}&limit=0&page=${currentPage}`)
       .then((res) => res.json())
       .then((data) => {
-        if (!Array.isArray(data)) {
+        if (!data.data || !Array.isArray(data.data)) { // Fix: Accessing `data.data`
           setMovies([]);
           setLoading(false);
           return;
         }
-
-        const formattedMovies = data.map((movie) => ({
+  
+        const formattedMovies = data.data.map((movie) => ({  // Fix: Use `data.data`
           name: movie.name,
           poster: movie.poster,
           rating: movie.rating,
@@ -34,12 +35,13 @@ const MovieListAll = () => {
           screenshot: movie.screenshot,
           torrents: movie.torrents,
         }));
-
+  
         setMovies(formattedMovies);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   };
+  
 
   const handleSearch = () => {
     setPage(1);
