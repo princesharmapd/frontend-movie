@@ -17,24 +17,24 @@ const InfiniteScrollMovies = () => {
     if (loading) return;
     setLoading(true);
     
-    fetch(`https://movies-backend-uok9.onrender.com/movies/search?query=${currentYear}&page=${currentPage}`)
+    fetch(`https://torrent-fast-api.onrender.com/api/v1/search?site=yts&query=${currentYear}&limit=0&page=${currentPage}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.error) {
+        if (!data.data || data.error) {  // Ensure 'data.data' exists
           setHasMore(false);
           setLoading(false);
           return;
         }
         
-        const filteredMovies = data.filter(
+        const filteredMovies = data.data.filter(
           (movie) => movie.name && movie.poster && movie.rating
         );
-
+  
         setMovies((prevMovies) => {
-          const uniqueMovies = [...new Map([...prevMovies, ...filteredMovies].map(movie => [movie.name, movie])).values()];
+          const uniqueMovies = [...new Map([...prevMovies, ...filteredMovies].map(movie => [movie.url, movie])).values()];
           return uniqueMovies;
         });
-
+  
         setFirstPageLoaded(true);
         setLoading(false);
         setHasMore(filteredMovies.length > 0);
@@ -44,6 +44,7 @@ const InfiniteScrollMovies = () => {
         setHasMore(false);
       });
   };
+  
 
   const lastMovieElementRef = useRef();
   useEffect(() => {
