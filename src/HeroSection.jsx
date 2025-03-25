@@ -43,74 +43,80 @@ const HeroSection = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: "100vw", overflow: "hidden" }}>
-      {loading ? (
-        <CircularProgress
-          size={50}
-          sx={{
-            color: "white",
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-          }}
-        />
-      ) : (
-        <Slider {...settings} ref={sliderRef}>
-          {movies.map((movie, index) => (
-            <Box
-              key={index}
-              sx={{
-                position: "relative",
-                height: "80vh",
-                overflow: "hidden",
-                borderRadius: 10,
-                marginTop: 5,
-                maxWidth: "100vw",
-              }}
-            >
-              <Card>
-                <CardMedia
-                  component="img"
-                  image={movie.poster}
-                  alt={movie.name}
-                  sx={{ height: "80vh", objectFit: "cover" }}
-                />
-              </Card>
+    <Box sx={{ mt: 3, ml: 2,marginTop:"55px" }}>
+      <Box sx={{ maxWidth: "100vw", overflow: "hidden" }}>
+        {loading ? (
+          <Box
+            sx={{
+              position: "relative",
+              height: "80vh",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 10,
+              overflow: "hidden",
+              backgroundColor: "#333",
+            }}
+          >
+            <CircularProgress size={60} sx={{ color: "white" }} />
+          </Box>
+        ) : (
+          <Slider {...settings} ref={sliderRef}>
+            {movies.map((movie, index) => (
               <Box
+                key={index}
                 sx={{
-                  position: "absolute",
-                  bottom: 50,
-                  left: 50,
-                  color: "white",
-                  width: "40%",
+                  position: "relative",
+                  height: "80vh",
+                  overflow: "hidden",
+                  borderRadius: 10,
+                  marginTop: 5,
+                  maxWidth: "100vw",
                 }}
               >
-                <Typography variant="h3" fontWeight="bold">
-                  {movie.name}
-                </Typography>
-                <Typography variant="h6" sx={{ mt: 2, fontSize: "12px" }}>
-                  {movie.description}
-                </Typography>
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  <strong>Genres:</strong> {movie.genre.join(", ")}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Runtime:</strong> {movie.runtime}
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  sx={{ mt: 2, borderRadius: 10 }}
-                  onClick={() => navigate(`/movie/${index}`, { state: { movie } })}
+                <Card>
+                  <CardMedia
+                    component="img"
+                    image={movie.poster}
+                    alt={movie.name}
+                    sx={{ height: "80vh", objectFit: "cover" }}
+                  />
+                </Card>
+                <Box
+                  sx={{
+                    position: "absolute",
+                    bottom: 50,
+                    left: 50,
+                    color: "white",
+                    width: "40%",
+                  }}
                 >
-                  Watch Now
-                </Button>
+                  <Typography variant="h3" fontWeight="bold">
+                    {movie.name}
+                  </Typography>
+                  <Typography variant="h6" sx={{ mt: 2, fontSize: "12px" }}>
+                    {movie.description}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    <strong>Genres:</strong> {movie.genre.join(", ")}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Runtime:</strong> {movie.runtime}
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    sx={{ mt: 2, borderRadius: 10 }}
+                    onClick={() => navigate(`/movie/${index}`, { state: { movie } })}
+                  >
+                    Watch Now
+                  </Button>
+                </Box>
               </Box>
-            </Box>
-          ))}
-        </Slider>
-      )}
+            ))}
+          </Slider>
+        )}
+      </Box>
     </Box>
   );
 };
