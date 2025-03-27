@@ -60,7 +60,7 @@ const MovieListAll = () => {
   };
 
   return (
-    <Container sx={{ mt: 3, marginTop: 7 }}>
+    
       <Box sx={{ display: "flex", gap: 1, alignItems: "center", marginBottom: 2 }}>
         {/* Search Input */}
         <TextField
@@ -124,7 +124,7 @@ const MovieListAll = () => {
       <Box sx={{ display: "flex", justifyContent: "center", marginTop: 2 }}>
         <Pagination count={10} page={page} onChange={handlePageChange} color="primary" />
       </Box>
-    </Container>
+    
   );
 };
 
