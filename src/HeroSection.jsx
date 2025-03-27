@@ -43,7 +43,7 @@ const HeroSection = () => {
   };
 
   return (
-    <Box sx={{ mt: 3, ml: 2,marginTop:"55px",marginLeft:"0px" }}>
+    <Box sx={{ mt: 3, ml: 2,marginTop:"35px",marginLeft:"0px" }}>
       <Box sx={{ maxWidth: "100vw", overflow: "hidden" }}>
         {loading ? (
           <Box
