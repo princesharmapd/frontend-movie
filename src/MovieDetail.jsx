@@ -3,88 +3,40 @@ import { useLocation } from "react-router-dom";
 import { 
   Container, 
   Typography, 
-  Button, 
   Grid, 
   Card, 
   CardMedia, 
   CardContent, 
   CircularProgress, 
-  List, 
-  ListItem, 
-  ListItemText 
+  MenuItem,
+  Select
 } from "@mui/material";
 import axios from "axios";
 
 const MovieDetail = () => {
   const { state } = useLocation();
   const movie = state?.movie;
-  const [fileList, setFileList] = useState([]);
   const [videoSrc, setVideoSrc] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [selectedQuality, setSelectedQuality] = useState("");
   const [spinnerColor, setSpinnerColor] = useState("white");
   const videoRef = useRef(null);
 
-  const findTorrentIdentifier = () => {
-    // First try to find magnet link
-    const findMagnet = (data) => {
-      if (!data) return null;
-      if (data.magnet) return data.magnet;
-      if (data.torrents && Array.isArray(data.torrents)) {
-        for (const torrent of data.torrents) {
-          if (torrent.magnet) return torrent.magnet;
-        }
-      }
-      return null;
-    };
-
-    // Then look for torrent URL
-    const findTorrentUrl = (data) => {
-      if (!data) return null;
-      if (data.torrent) return data.torrent;
-      if (data.torrents && Array.isArray(data.torrents)) {
-        for (const torrent of data.torrents) {
-          if (torrent.url && torrent.url.endsWith('.torrent')) return torrent.url;
-          if (torrent.torrent) return torrent.torrent;
-        }
-      }
-      return null;
-    };
-
-    const magnet = findMagnet(movie);
-    if (magnet) return magnet;
-
-    const torrentUrl = findTorrentUrl(movie);
-    if (torrentUrl) return torrentUrl;
-
-    return null;
+  const getMagnetLinkByQuality = (quality) => {
+    if (!movie?.torrents) return null;
+    const selectedTorrent = movie.torrents.find(t => t.quality === quality);
+    return selectedTorrent?.magnet || null;
   };
 
-  const fetchFiles = async () => {
-    const torrentIdentifier = findTorrentIdentifier();
+  const startStream = (quality) => {
+    const torrentIdentifier = getMagnetLinkByQuality(quality);
     if (!torrentIdentifier) {
-      console.warn("No magnet link or torrent URL found");
+      alert("No valid torrent source found for selected quality");
       return;
     }
-
-    try {
-      const response = await axios.get(
-        `https://webtorrent-stream.onrender.com/list-files/${encodeURIComponent(torrentIdentifier)}`
-      );
-      setFileList(response.data);
-    } catch (error) {
-      console.error("Error fetching file list:", error);
-    }
-  };
-
-  const startStream = (filename) => {
-    const torrentIdentifier = findTorrentIdentifier();
-    if (!torrentIdentifier) {
-      alert("No valid torrent source found");
-      return;
-    }
-
+    
     setVideoSrc(
-      `https://webtorrent-stream.onrender.com/stream/${encodeURIComponent(torrentIdentifier)}/${encodeURIComponent(filename)}`
+      `https://webtorrent-stream.onrender.com/stream/${encodeURIComponent(torrentIdentifier)}`
     );
     setLoading(true);
   };
@@ -132,104 +84,37 @@ const MovieDetail = () => {
 
   if (!movie) return <Typography variant="h4">Movie not found</Typography>;
 
-  const hasValidPoster = movie.poster && movie.poster !== "https://l.t0r.site/no-cover.png";
-
   return (
     <Container sx={{ marginTop: 7 }}>
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
           <Card>
-            {hasValidPoster ? (
-              <CardMedia component="img" image={movie.poster} alt={movie.name} />
-            ) : movie.screenshot && movie.screenshot.length > 0 ? (
-              <Grid container spacing={1} sx={{ padding: 1 }}>
-                {movie.screenshot.slice(0, 4).map((screenshot, index) => (
-                  <Grid item xs={6} key={index}>
-                    <img
-                      src={screenshot}
-                      alt={`Screenshot ${index + 1}`}
-                      style={{ width: "100%", borderRadius: "5px" }}
-                    />
-                  </Grid>
-                ))}
-              </Grid>
-            ) : (
-              <CardMedia
-                component="img"
-                image="https://via.placeholder.com/300"
-                alt="No Cover Available"
-              />
-            )}
+            <CardMedia component="img" image={movie.poster} alt={movie.name} />
           </Card>
         </Grid>
         <Grid item xs={12} md={8}>
           <Typography variant="h4">{movie.name}</Typography>
           <Typography variant="h6" color="textSecondary">{movie.date}</Typography>
-          <Typography variant="body1" sx={{ marginTop: 2 }}>
-            {movie.description || "No description available."}
-          </Typography>
+          <Typography variant="body1" sx={{ marginTop: 2 }}>{movie.description}</Typography>
           
-          {movie.genre && (
-            <Typography variant="body2" sx={{ marginTop: 2 }}>
-              <strong>Genres:</strong> {Array.isArray(movie.genre) ? movie.genre.join(", ") : movie.genre}
-            </Typography>
-          )}
-          
-          {movie.runtime && (
-            <Typography variant="body2">
-              <strong>Runtime:</strong> {movie.runtime}
-            </Typography>
-          )}
-
-          {movie.screenshot && movie.screenshot.length > 0 && (
-            <Grid container spacing={1} sx={{ marginTop: 2 }}>
-              {movie.screenshot.slice(0, 4).map((screenshot, index) => (
-                <Grid item xs={6} sm={3} key={index}>
-                  <img
-                    src={screenshot}
-                    alt={`Screenshot ${index + 1}`}
-                    style={{ width: "100%", borderRadius: "5px" }}
-                  />
-                </Grid>
+          {movie.torrents && (
+            <Select
+              value={selectedQuality}
+              onChange={(e) => {
+                setSelectedQuality(e.target.value);
+                startStream(e.target.value);
+              }}
+              displayEmpty
+              sx={{ marginTop: 2, minWidth: 200 }}
+            >
+              <MenuItem value="" disabled>Select Quality</MenuItem>
+              {movie.torrents.map((torrent, index) => (
+                <MenuItem key={index} value={torrent.quality}>{torrent.quality} ({torrent.size})</MenuItem>
               ))}
-            </Grid>
+            </Select>
           )}
-
-          <Button 
-            variant="contained" 
-            color="primary" 
-            sx={{ marginTop: 2 }}
-            onClick={fetchFiles}
-          >
-            Load Available Files
-          </Button>
         </Grid>
       </Grid>
-
-      {fileList.length > 0 && (
-        <div style={{ marginTop: 20 }}>
-          <Typography variant="h5">Available Files</Typography>
-          <List>
-            {fileList.map((file, index) => (
-              <ListItem key={index}>
-                <ListItemText 
-                  primary={file.name} 
-                  secondary={`${(file.length / (1024 * 1024)).toFixed(2)} MB`} 
-                />
-                {file.type === "video" && (
-                  <Button 
-                    variant="outlined" 
-                    color="secondary" 
-                    onClick={() => startStream(file.name)}
-                  >
-                    Play
-                  </Button>
-                )}
-              </ListItem>
-            ))}
-          </List>
-        </div>
-      )}
 
       {videoSrc && (
         <div style={{ marginTop: 20, position: "relative", textAlign: "center" }}>
