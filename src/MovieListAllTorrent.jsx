@@ -81,7 +81,7 @@ const MovieListAllTorrent = () => {
 
   return (
    <>
-      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+      <Box sx={{ display: "flex", gap: 2, mb: 2,marginTop: 7 }}>
         <TextField
           label="Search Movies"
           variant="outlined"
