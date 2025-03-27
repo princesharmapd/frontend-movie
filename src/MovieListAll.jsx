@@ -61,7 +61,7 @@ const MovieListAll = () => {
 
   return (
     <>
-      <Box sx={{ display: "flex", gap: 1, alignItems: "center", marginBottom: 2 }}>
+      <Box sx={{ display: "flex", gap: 1, alignItems: "center", marginBottom: 2,marginTop: 7 }}>
         {/* Search Input */}
         <TextField
           label="Search Movies"
