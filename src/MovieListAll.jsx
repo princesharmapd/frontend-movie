@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 const MovieListAll = () => {
   const [movies, setMovies] = useState([]);
-  const [query, setQuery] = useState("Hindi Dubbed");
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const navigate = useNavigate();
