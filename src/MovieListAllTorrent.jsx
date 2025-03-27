@@ -80,7 +80,7 @@ const MovieListAllTorrent = () => {
   };
 
   return (
-    <Container sx={{ mt: 3 ,marginTop: 7 }}>
+   <>
       <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
         <TextField
           label="Search Movies"
@@ -132,7 +132,7 @@ const MovieListAllTorrent = () => {
           <CircularProgress />
         </Box>
       )}
-    </Container>
+    </>
   );
 };
 
