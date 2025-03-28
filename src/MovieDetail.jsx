@@ -68,7 +68,7 @@ const MovieDetail = () => {
 
     try {
       const response = await axios.get(
-        `https://webtorrent-stream.vercel.app/list-files/${encodeURIComponent(torrentIdentifier)}`
+        `https://webtorrent-stream.onrender.com/list-files/${encodeURIComponent(torrentIdentifier)}`
       );
       setFileList(response.data);
     } catch (error) {
@@ -84,7 +84,7 @@ const MovieDetail = () => {
     }
 
     setVideoSrc(
-      `https://webtorrent-stream.vercel.app/stream/${encodeURIComponent(torrentIdentifier)}/${encodeURIComponent(filename)}`
+      `https://webtorrent-stream.onrender.com/stream/${encodeURIComponent(torrentIdentifier)}/${encodeURIComponent(filename)}`
     );
     setLoading(true);
   };

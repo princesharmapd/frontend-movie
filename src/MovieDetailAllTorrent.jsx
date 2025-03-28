@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 
-const API_BASE_URL = "https://webtorrent-stream.vercel.app";
+const API_BASE_URL = "https://webtorrent-stream.onrender.com";
 
 const MovieDetail = () => {
   const { state } = useLocation();
