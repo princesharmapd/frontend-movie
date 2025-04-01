@@ -158,7 +158,7 @@ const MovieDetail = () => {
     try {
       setLoading(prev => ({ ...prev, fetch: true }));
       const response = await fetch(
-        `http://localhost:5000/list-files/${encodeURIComponent(torrentIdentifier)}`
+        `https://webtorrent-stream.onrender.com/list-files/${encodeURIComponent(torrentIdentifier)}`
       );
       
       if (!response.ok) {
@@ -188,7 +188,7 @@ const MovieDetail = () => {
       
       // Create download link
       const a = document.createElement('a');
-      a.href = `http://localhost:5000/download/${encodeURIComponent(torrentIdentifier)}/${encodeURIComponent(filename)}`;
+      a.href = `https://webtorrent-stream.onrender.com/download/${encodeURIComponent(torrentIdentifier)}/${encodeURIComponent(filename)}`;
       a.download = filename;
       a.style.display = 'none';
       document.body.appendChild(a);
@@ -244,7 +244,7 @@ const MovieDetail = () => {
       
       // Create a new stream
       const response = await fetch(
-        `http://localhost:5000/download/${encodeURIComponent(torrentIdentifier)}/${encodeURIComponent(filename)}`,
+        `https://webtorrent-stream.onrender.com/download/${encodeURIComponent(torrentIdentifier)}/${encodeURIComponent(filename)}`,
         { headers: { 'Range': 'bytes=0-' } }
       );
       

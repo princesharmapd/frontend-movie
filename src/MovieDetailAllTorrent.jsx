@@ -17,29 +17,57 @@ import {
   Tab,
   Paper,
   CircularProgress,
-  Chip,
   Divider,
   Stack,
-  IconButton,
-  Rating,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  LinearProgress
+  LinearProgress,
+  Tooltip,
+  Chip
 } from "@mui/material";
-import { Info, PlayArrow, Download, Close, Delete } from '@mui/icons-material';
+import { Info, PlayArrow, Download, Delete } from '@mui/icons-material';
 
-// IndexedDB setup
+// IndexedDB setup with versioning for schema updates
 const openDB = () => {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('VideoStreamDB', 1);
-    request.onerror = (event) => reject('Database error: ' + event.target.errorCode);
-    request.onsuccess = (event) => resolve(event.target.result);
+    const request = indexedDB.open('VideoStreamDB', 2);
+    
+    request.onerror = (event) => {
+      reject('Database error: ' + event.target.errorCode);
+    };
+    
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
       if (!db.objectStoreNames.contains('videos')) {
-        db.createObjectStore('videos', { keyPath: 'id' });
+        const store = db.createObjectStore('videos', { keyPath: 'id' });
+        store.createIndex('lastAccessed', 'lastAccessed', { unique: false });
       }
+      
+      // Schema migration for version 2
+      if (event.oldVersion < 2) {
+        if (!db.objectStoreNames.contains('metadata')) {
+          db.createObjectStore('metadata', { keyPath: 'key' });
+        }
+      }
+    };
+    
+    request.onsuccess = (event) => {
+      const db = event.target.result;
+      
+      // Set up automatic cleanup of old data
+      const transaction = db.transaction(['videos'], 'readwrite');
+      const store = transaction.objectStore('videos');
+      const index = store.index('lastAccessed');
+      const oneMonthAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+      
+      const range = IDBKeyRange.upperBound(oneMonthAgo);
+      index.openCursor(range).onsuccess = (event) => {
+        const cursor = event.target.result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        }
+      };
+      
+      resolve(db);
     };
   });
 };
@@ -48,26 +76,50 @@ const storeVideoChunk = async (videoId, chunk, chunkIndex) => {
   const db = await openDB();
   const transaction = db.transaction(['videos'], 'readwrite');
   const store = transaction.objectStore('videos');
+  
   return new Promise((resolve, reject) => {
     const request = store.get(videoId);
+    
     request.onsuccess = (event) => {
-      const data = event.target.result || { id: videoId, chunks: [], metadata: {} };
+      const data = event.target.result || { 
+        id: videoId, 
+        chunks: [], 
+        metadata: {},
+        lastAccessed: Date.now()
+      };
+      
       data.chunks[chunkIndex] = chunk;
+      data.lastAccessed = Date.now();
+      
       const putRequest = store.put(data);
       putRequest.onsuccess = resolve;
       putRequest.onerror = reject;
     };
+    
     request.onerror = reject;
   });
 };
 
 const getVideoChunks = async (videoId) => {
   const db = await openDB();
-  const transaction = db.transaction(['videos'], 'readonly');
+  const transaction = db.transaction(['videos'], 'readwrite'); // Note: readwrite to update lastAccessed
   const store = transaction.objectStore('videos');
+  
   return new Promise((resolve, reject) => {
     const request = store.get(videoId);
-    request.onsuccess = (event) => resolve(event.target.result?.chunks || []);
+    
+    request.onsuccess = (event) => {
+      const data = event.target.result;
+      if (data) {
+        // Update last accessed time
+        data.lastAccessed = Date.now();
+        store.put(data);
+        resolve(data.chunks || []);
+      } else {
+        resolve([]);
+      }
+    };
+    
     request.onerror = reject;
   });
 };
@@ -76,6 +128,7 @@ const deleteVideoFromDB = async (videoId) => {
   const db = await openDB();
   const transaction = db.transaction(['videos'], 'readwrite');
   const store = transaction.objectStore('videos');
+  
   return new Promise((resolve, reject) => {
     const request = store.delete(videoId);
     request.onsuccess = resolve;
@@ -83,12 +136,52 @@ const deleteVideoFromDB = async (videoId) => {
   });
 };
 
+// Supported video formats
+const VIDEO_FORMATS = [
+  'mp4', 'webm', 'ogg', 'mov', 'mkv', 'avi', 'wmv', 'flv', 'mpeg', '3gp'
+];
+
+// MIME type mapping
+const MIME_TYPES = {
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  ogg: 'video/ogg',
+  mov: 'video/quicktime',
+  mkv: 'video/x-matroska',
+  avi: 'video/x-msvideo',
+  wmv: 'video/x-ms-wmv',
+  flv: 'video/x-flv',
+  mpeg: 'video/mpeg',
+  '3gp': 'video/3gpp'
+};
+
+const getFileExtension = (filename) => {
+  return filename.split('.').pop().toLowerCase();
+};
+
+const getMimeType = (filename) => {
+  const ext = getFileExtension(filename);
+  return MIME_TYPES[ext] || 'video/mp4'; // default to mp4 if unknown
+};
+
+const isVideoFile = (filename) => {
+  const ext = getFileExtension(filename);
+  return VIDEO_FORMATS.includes(ext);
+};
+
+const formatFileSize = (bytes) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+};
+
 const MovieDetailmain = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
   const movie = state?.movie;
   const videoRef = useRef(null);
-  const activeReaderRef = useRef(null); // Track active reader for cleanup
+  const activeReaderRef = useRef(null);
   
   const [fileList, setFileList] = useState([]);
   const [snackbar, setSnackbar] = useState({
@@ -106,22 +199,25 @@ const MovieDetailmain = () => {
   const [downloadProgress, setDownloadProgress] = useState({});
   const [activeVideoId, setActiveVideoId] = useState(null);
   const [canPlay, setCanPlay] = useState(false);
+  const [videoMetadata, setVideoMetadata] = useState({
+    duration: 0,
+    resolution: 'Unknown',
+    format: 'Unknown'
+  });
 
-  // Clean up resources when component unmounts or when switching files
+  // Clean up resources
   useEffect(() => {
     return () => {
-      // Clean up active reader if exists
       if (activeReaderRef.current) {
         activeReaderRef.current.cancel().catch(() => {});
       }
-      // Clean up video URL
       if (videoUrl) {
         URL.revokeObjectURL(videoUrl);
       }
     };
   }, [videoUrl]);
 
-  // Automatically fetch files when component mounts
+  // Fetch files on mount
   useEffect(() => {
     if (!movie) {
       navigate('/');
@@ -140,7 +236,7 @@ const MovieDetailmain = () => {
     try {
       setLoading(prev => ({ ...prev, fetch: true }));
       const response = await fetch(
-        `http://localhost:5000/list-files/${encodeURIComponent(torrentIdentifier)}`
+        `https://webtorrent-stream.onrender.com/list-files/${encodeURIComponent(torrentIdentifier)}`
       );
       
       if (!response.ok) {
@@ -148,7 +244,10 @@ const MovieDetailmain = () => {
       }
       
       const data = await response.json();
-      setFileList(data.filter(file => file.type === 'video'));
+      // Filter for video files and sort by size (largest first, assuming better quality)
+      const videoFiles = data.filter(file => isVideoFile(file.name));
+      videoFiles.sort((a, b) => b.length - a.length);
+      setFileList(videoFiles);
     } catch (error) {
       showSnackbar(`Failed to fetch files: ${error.message}`, "error");
       console.error('Fetch files error:', error);
@@ -169,7 +268,7 @@ const MovieDetailmain = () => {
       showSnackbar("Starting download...", "info");
       
       const a = document.createElement('a');
-      a.href = `http://localhost:5000/download/${encodeURIComponent(torrentIdentifier)}/${encodeURIComponent(filename)}`;
+      a.href = `https://webtorrent-stream.onrender.com/download/${encodeURIComponent(torrentIdentifier)}/${encodeURIComponent(filename)}`;
       a.download = filename;
       a.style.display = 'none';
       document.body.appendChild(a);
@@ -188,23 +287,22 @@ const MovieDetailmain = () => {
   const handlePlay = async (filename) => {
     const videoId = `${movie.id}-${filename}`;
     
-    // Clean up any existing playback first
     await cleanupCurrentPlayback();
-    
     setActiveVideoId(videoId);
     setCanPlay(false);
     
     try {
       setLoading(prev => ({ ...prev, play: true }));
       
-      // Check if we already have chunks in IndexedDB
+      // Check for existing chunks
       const existingChunks = await getVideoChunks(videoId);
       if (existingChunks.length > 0) {
         const totalSize = existingChunks.reduce((sum, chunk) => sum + (chunk?.byteLength || 0), 0);
         const firstChunkSize = existingChunks[0]?.byteLength || 0;
         
         if (firstChunkSize > 0 && totalSize > firstChunkSize * 0.05) {
-          const blob = new Blob(existingChunks.filter(Boolean), { type: 'video/mp4' });
+          const mimeType = getMimeType(filename);
+          const blob = new Blob(existingChunks.filter(Boolean), { type: mimeType });
           const url = URL.createObjectURL(blob);
           setVideoUrl(url);
           setActiveTab(1);
@@ -222,7 +320,7 @@ const MovieDetailmain = () => {
       showSnackbar(`Starting to stream ${filename}`, "info");
       
       const response = await fetch(
-        `http://localhost:5000/download/${encodeURIComponent(torrentIdentifier)}/${encodeURIComponent(filename)}`,
+        `https://webtorrent-stream.onrender.com/download/${encodeURIComponent(torrentIdentifier)}/${encodeURIComponent(filename)}`,
         { headers: { 'Range': 'bytes=0-' } }
       );
       
@@ -231,19 +329,21 @@ const MovieDetailmain = () => {
       }
       
       const reader = response.body.getReader();
-      activeReaderRef.current = reader; // Store the active reader
+      activeReaderRef.current = reader;
       
       const chunks = [];
       let receivedLength = 0;
-      const contentLength = parseInt(response.headers.get('Content-Length') || 0);
+      const contentLength = parseInt(response.headers.get('Content-Length') || '0');
       
       setDownloadProgress(prev => ({
         ...prev,
         [videoId]: { received: 0, total: contentLength }
       }));
       
-      // First phase: get at least 5% buffered
-      while (receivedLength < contentLength * 0.05) {
+      // First phase: get initial buffer (5% or 10MB, whichever is smaller)
+      const initialBufferTarget = Math.min(contentLength * 0.05, 10 * 1024 * 1024);
+      
+      while (receivedLength < initialBufferTarget) {
         const { done, value } = await reader.read();
         if (done) break;
         
@@ -258,8 +358,9 @@ const MovieDetailmain = () => {
         }));
       }
       
-      if (receivedLength >= contentLength * 0.05  ) {
-        const blob = new Blob(chunks, { type: 'video/mp4' });
+      if (receivedLength >= initialBufferTarget) {
+        const mimeType = getMimeType(filename);
+        const blob = new Blob(chunks, { type: mimeType });
         const url = URL.createObjectURL(blob);
         setVideoUrl(url);
         setActiveTab(1);
@@ -270,26 +371,33 @@ const MovieDetailmain = () => {
         return;
       }
       
-      // Second phase: continue buffering in the background
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        chunks.push(value);
-        receivedLength += value.length;
-        const chunkIndex = chunks.length - 1;
-        await storeVideoChunk(videoId, value, chunkIndex);
-        
-        setDownloadProgress(prev => ({
-          ...prev,
-          [videoId]: { received: receivedLength, total: contentLength }
-        }));
-      }
-      
-      const blob = new Blob(chunks, { type: 'video/mp4' });
-      const url = URL.createObjectURL(blob);
-      setVideoUrl(url);
-      showSnackbar(`Now playing ${filename}`, "success");
+      // Second phase: continue buffering in background
+      (async () => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            chunks.push(value);
+            receivedLength += value.length;
+            const chunkIndex = chunks.length - 1;
+            await storeVideoChunk(videoId, value, chunkIndex);
+            
+            setDownloadProgress(prev => ({
+              ...prev,
+              [videoId]: { received: receivedLength, total: contentLength }
+            }));
+          }
+          
+          // Update with final blob when complete
+          const mimeType = getMimeType(filename);
+          const blob = new Blob(chunks, { type: mimeType });
+          const url = URL.createObjectURL(blob);
+          setVideoUrl(url);
+        } catch (error) {
+          console.error('Background buffering error:', error);
+        }
+      })();
       
     } catch (error) {
       showSnackbar(`Playback failed: ${error.message}`, "error");
@@ -300,7 +408,6 @@ const MovieDetailmain = () => {
   };
 
   const cleanupCurrentPlayback = async () => {
-    // Cancel any active reader
     if (activeReaderRef.current) {
       try {
         await activeReaderRef.current.cancel();
@@ -310,13 +417,11 @@ const MovieDetailmain = () => {
       activeReaderRef.current = null;
     }
     
-    // Clean up video URL
     if (videoUrl) {
       URL.revokeObjectURL(videoUrl);
       setVideoUrl(null);
     }
     
-    // Reset playback state
     setCanPlay(false);
   };
 
@@ -344,6 +449,17 @@ const MovieDetailmain = () => {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+  };
+
+  const handleVideoMetadata = (event) => {
+    if (videoRef.current) {
+      const video = videoRef.current;
+      setVideoMetadata({
+        duration: video.duration,
+        resolution: `${video.videoWidth}x${video.videoHeight}`,
+        format: getFileExtension(activeVideoId?.split('-').pop() || '')
+      });
+    }
   };
 
   if (!movie) {
@@ -402,41 +518,58 @@ const MovieDetailmain = () => {
             {activeTab === 0 && (
               <List>
                 {fileList.map((file, index) => {
-                  const fileSizeMB = (file.length / (1024 * 1024)).toFixed(2);
+                  const fileSize = formatFileSize(file.length);
                   const videoId = `${movie.id}-${file.name}`;
                   const progress = downloadProgress[videoId] || { received: 0, total: 1 };
+                  const fileExt = getFileExtension(file.name).toUpperCase();
 
                   return (
                     <ListItem 
                       key={index}
                       secondaryAction={
                         <Stack direction="row" spacing={1}>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handlePlay(file.name)}
-                            disabled={loading.play}
-                            startIcon={loading.play ? <CircularProgress size={20} /> : <PlayArrow />}
-                          >
-                            {loading.play ? "Loading..." : "Play"}
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            onClick={() => handleDownload(file.name)}
-                            disabled={loading.download}
-                            startIcon={loading.download ? <CircularProgress size={20} /> : <Download />}
-                          >
-                            {loading.download ? "Downloading..." : "Download"}
-                          </Button>
+                          <Tooltip title="Stream this file">
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              onClick={() => handlePlay(file.name)}
+                              disabled={loading.play}
+                              startIcon={loading.play ? <CircularProgress size={20} /> : <PlayArrow />}
+                            >
+                              {loading.play ? "Loading..." : "Play"}
+                            </Button>
+                          </Tooltip>
+                          <Tooltip title="Download full file">
+                            <Button
+                              variant="outlined"
+                              onClick={() => handleDownload(file.name)}
+                              disabled={loading.download}
+                              startIcon={loading.download ? <CircularProgress size={20} /> : <Download />}
+                            >
+                              {loading.download ? "Downloading..." : "Download"}
+                            </Button>
+                          </Tooltip>
                         </Stack>
                       }
                     >
                       <ListItemText 
-                        primary={file.name} 
+                        primary={
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                              {file.name}
+                            </Typography>
+                            <Chip 
+                              label={fileExt} 
+                              size="small" 
+                              sx={{ ml: 1 }} 
+                              color="primary"
+                            />
+                          </Box>
+                        } 
                         secondary={
                           <Box>
                             <Typography variant="body2">
-                              {fileSizeMB} MB
+                              {fileSize}
                               {progress.received > 0 && (
                                 <span> ({Math.round((progress.received / progress.total) * 100)}% buffered)</span>
                               )}
@@ -467,57 +600,56 @@ const MovieDetailmain = () => {
                   overflow: 'hidden',
                   minHeight: '400px'
                 }}>
-                  // In your video element:
-<video
-  ref={videoRef}
-  controls
-  autoPlay={canPlay}
-  style={{ width: '100%', maxHeight: '70vh' }}
-  src={videoUrl}
-  onCanPlay={() => {
-    if (videoRef.current && canPlay) {
-      videoRef.current.play().catch(e => {
-        console.error('Autoplay prevented:', e);
-        showSnackbar('Click the play button to start', 'info');
-      });
-    }
-  }}
-  onWaiting={() => showSnackbar('Buffering more data...', 'info')}
-  onPlaying={() => showSnackbar('Playback started', 'success')}
-  onError={(e) => {
-    const video = e.target;
-    let errorMessage = "Video playback failed";
-    
-    // Check the video error state
-    switch(video.error.code) {
-      case MediaError.MEDIA_ERR_ABORTED:
-        errorMessage = "Video loading was aborted";
-        break;
-      case MediaError.MEDIA_ERR_NETWORK:
-        errorMessage = "Network error occurred";
-        break;
-      case MediaError.MEDIA_ERR_DECODE:
-        errorMessage = "Video decoding failed - may be corrupt or unsupported format";
-        break;
-      case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-        errorMessage = "Video format not supported by your browser";
-        break;
-      default:
-        errorMessage = "Unknown video playback error";
-    }
-    
-    console.error('Video error details:', {
-      errorCode: video.error.code,
-      networkState: video.networkState,
-      readyState: video.readyState,
-      src: video.src
-    });
-    
-    showSnackbar(errorMessage, 'error');
-  }}
-/>
+                  <video
+                    ref={videoRef}
+                    controls
+                    autoPlay={canPlay}
+                    style={{ width: '100%', maxHeight: '70vh' }}
+                    src={videoUrl}
+                    onCanPlay={handleVideoMetadata}
+                    onLoadedMetadata={handleVideoMetadata}
+                    onCanPlayThrough={() => showSnackbar('Ready for smooth playback', 'success')}
+                    onWaiting={() => showSnackbar('Buffering more data...', 'info')}
+                    onPlaying={() => showSnackbar('Playback started', 'success')}
+                    onError={(e) => {
+                      const video = e.target;
+                      let errorMessage = "Video playback failed";
+                      
+                      switch(video.error?.code) {
+                        case MediaError.MEDIA_ERR_ABORTED:
+                          errorMessage = "Video loading was aborted";
+                          break;
+                        case MediaError.MEDIA_ERR_NETWORK:
+                          errorMessage = "Network error occurred";
+                          break;
+                        case MediaError.MEDIA_ERR_DECODE:
+                          errorMessage = "Video decoding failed - may be corrupt or unsupported format";
+                          break;
+                        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                          errorMessage = "Video format not supported by your browser";
+                          break;
+                        default:
+                          errorMessage = "Unknown video playback error";
+                      }
+                      
+                      console.error('Video error details:', {
+                        errorCode: video.error?.code,
+                        networkState: video.networkState,
+                        readyState: video.readyState,
+                        src: video.src
+                      });
+                      
+                      showSnackbar(errorMessage, 'error');
+                    }}
+                  />
                 </Box>
-                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Format: {videoMetadata.format} | Resolution: {videoMetadata.resolution} | 
+                    Duration: {videoMetadata.duration ? new Date(videoMetadata.duration * 1000).toISOString().substr(11, 8) : 'N/A'}
+                  </Typography>
+                  
                   <Button
                     variant="outlined"
                     color="error"
